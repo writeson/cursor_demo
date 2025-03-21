@@ -46,7 +46,3 @@ htmlcov/
 
 # Ruff cache
 .ruff_cache/
-
-# Build artifacts
-node_modules/
-.mypy_cache/

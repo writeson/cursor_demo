@@ -1,7 +1,6 @@
 """
 Database module for interacting with SQLite database using SQLModel and aiosqlite.
 """
-
 import os
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
@@ -10,8 +9,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlmodel import Field, SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from project.src.models import User
+
 # Define the database URL
-DB_DIR = os.path.join(os.path.dirname(__file__), "db")
+DB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db")
+os.makedirs(DB_DIR, exist_ok=True)  # Ensure DB directory exists
 DB_PATH = os.path.join(DB_DIR, "cursor_demo.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
@@ -19,26 +21,9 @@ DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 engine = create_async_engine(DATABASE_URL, echo=True)
 
 # Create async session maker
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-
-# Define the User model
-class User(SQLModel, table=True):
-    """
-    User model for the database.
-
-    :param id: Primary key
-    :param first_name: User's first name
-    :param last_name: User's last name
-    :param age: User's age
-    """
-
-    __tablename__ = "users"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    first_name: str
-    last_name: str
-    age: int
+async_session = sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 # Type variable for generic CRUD operations
@@ -137,10 +122,9 @@ class CRUDBase(Generic[T]):
             return False
 
 
-# Create a CRUD class for the User model
+# Create a CRUD class for User model
 class UserCRUD(CRUDBase[User]):
     """CRUD operations for the User model."""
-
     pass
 
 

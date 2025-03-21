@@ -1,121 +1,104 @@
 """
-User endpoints module.
+User endpoints router module.
 """
-
-from typing import List, Optional
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from project.database import User, user_crud
+from project.src.database import User, user_crud
 
+# Create router
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+# Pydantic models for API
 class UserCreate(BaseModel):
-    """
-    Schema for creating a user.
-
-    :param first_name: User's first name
-    :param last_name: User's last name
-    :param age: User's age
-    """
-
+    """User creation model for API requests."""
     first_name: str
     last_name: str
     age: int
 
-
-class UserUpdate(BaseModel):
-    """
-    Schema for updating a user.
-
-    :param first_name: User's first name (optional)
-    :param last_name: User's last name (optional)
-    :param age: User's age (optional)
-    """
-
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    age: Optional[int] = None
-
-
 class UserRead(BaseModel):
-    """
-    Schema for reading a user.
-
-    :param id: User ID
-    :param first_name: User's first name
-    :param last_name: User's last name
-    :param age: User's age
-    """
-
+    """User read model for API responses."""
     id: int
     first_name: str
     last_name: str
     age: int
 
+class UserUpdate(BaseModel):
+    """User update model for API requests."""
+    first_name: str | None = None
+    last_name: str | None = None
+    age: int | None = None
 
-@router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserCreate) -> User:
+
+@router.post("/", response_model=UserRead)
+async def create_user(user: UserCreate) -> UserRead:
     """
     Create a new user.
 
-    :param user: User data
+    :param user: User data to create
     :return: Created user
     """
     db_user = User(first_name=user.first_name, last_name=user.last_name, age=user.age)
     return await user_crud.create(db_user)
 
-
-@router.get("/{user_id}", response_model=UserRead)
-async def read_user(user_id: int) -> User:
-    """
-    Get a user by ID.
-
-    :param user_id: User ID
-    :return: User data
-    """
-    db_user = await user_crud.get(user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
-
-
-@router.get("/", response_model=List[UserRead])
-async def read_users() -> List[User]:
+@router.get("/", response_model=list[UserRead])
+async def get_users() -> list[UserRead]:
     """
     Get all users.
 
-    :return: List of users
+    :return: List of all users
     """
     return await user_crud.get_all()
 
+@router.get("/{user_id}", response_model=UserRead)
+async def get_user(user_id: int) -> UserRead:
+    """
+    Get a user by ID.
+
+    :param user_id: User ID to retrieve
+    :return: Retrieved user
+    :raises HTTPException: If user not found
+    """
+    user = await user_crud.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @router.patch("/{user_id}", response_model=UserRead)
-async def update_user(user_id: int, user: UserUpdate) -> User:
+async def update_user(user_id: int, user: UserUpdate) -> UserRead:
     """
     Update a user.
 
-    :param user_id: User ID
+    :param user_id: User ID to update
     :param user: User data to update
     :return: Updated user
+    :raises HTTPException: If user not found or no fields to update
     """
-    user_data = user.dict(exclude_unset=True)
-    db_user = await user_crud.update(user_id, user_data)
-    if db_user is None:
+    # Convert Pydantic model to dict, excluding None values
+    update_data = {k: v for k, v in user.model_dump().items() if v is not None}
+
+    # If no fields to update, return error
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    # Update user
+    updated_user = await user_crud.update(user_id, update_data)
+    if not updated_user:
         raise HTTPException(status_code=404, detail="User not found")
-    return db_user
 
+    return updated_user
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: int) -> None:
+@router.delete("/{user_id}")
+async def delete_user(user_id: int) -> dict[str, str]:
     """
     Delete a user.
 
-    :param user_id: User ID
-    :return: None
+    :param user_id: User ID to delete
+    :return: Confirmation message
+    :raises HTTPException: If user not found
     """
     deleted = await user_crud.delete(user_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="User not found")
+    return {"message": f"User {user_id} deleted successfully"}

@@ -1,13 +1,6 @@
 """
-Endpoints package initialization.
+Endpoints package for the API.
 """
-
-from fastapi import APIRouter
-
 from project.src.endpoints.users import router as users_router
 
-# Create the main API router
-api_router = APIRouter()
-
-# Include the users router
-api_router.include_router(users_router)
+__all__ = ["users_router"]
